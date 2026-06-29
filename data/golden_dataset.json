@@ -1,0 +1,118 @@
+{
+  "dataset_info": {
+    "name": "Undergraduate Calculus Pedagogical Dataset",
+    "version": "2.0",
+    "description": "Enhanced dataset featuring scaffolding, context, and multiple representations in English.",
+    "total_problems": 4
+  },
+  "problems": [
+    {
+      "problem_id": "LIM_001",
+      "topic": "Limits and Continuity",
+      "sub_topic": "Intermediate Value Theorem",
+      "difficulty": 3,
+      "pedagogical_principle": "Conceptual Engagement",
+      "problem_statement": "Prove that the equation $x^3 + x - 1 = 0$ has at least one real root in the interval $[0, 1]$.",
+      "scaffolding": [
+        {
+          "step": 1,
+          "hint": "Define a function $f(x) = x^3 + x - 1$. Is this function continuous on $[0, 1]$?"
+        },
+        {
+          "step": 2,
+          "hint": "Calculate the values of $f(0)$ and $f(1)$. Are they of opposite signs?"
+        },
+        {
+          "step": 3,
+          "hint": "Apply the Intermediate Value Theorem (IVT) to conclude that there exists a $c$ such that $f(c)=0$."
+        }
+      ],
+      "solution": "Let $f(x) = x^3 + x - 1$. $f(x)$ is continuous on $[0, 1]$ as it is a polynomial. $f(0) = -1 < 0$ and $f(1) = 1 > 0$. Since 0 is between $f(0)$ and $f(1)$, by IVT, there exists at least one $c \\in (0, 1)$ such that $f(c) = 0$.",
+      "multiple_representations": {
+        "algebraic": "Solution involves checking boundary signs of the continuous function.",
+        "visual": "The graph of $y = f(x)$ must cross the x-axis to get from below (y=-1) to above (y=1)."
+      },
+      "concepts": ["continuity", "Intermediate Value Theorem", "root existence"],
+      "real_world_context": "Theoretical Mathematics"
+    },
+    {
+      "problem_id": "DER_001",
+      "topic": "Derivatives and Differentiation",
+      "sub_topic": "Related Rates",
+      "difficulty": 4,
+      "pedagogical_principle": "Contextualized Learning",
+      "problem_statement": "A ladder 10 ft long rests against a vertical wall. If the bottom of the ladder slides away from the wall at a rate of 2 ft/s, how fast is the top of the ladder sliding down the wall when the bottom is 6 ft from the wall?",
+      "scaffolding": [
+        {
+          "step": 1,
+          "hint": "Let $x$ be the distance of the bottom from the wall and $y$ be the height of the top. Use the Pythagorean theorem to relate $x$ and $y$."
+        },
+        {
+          "step": 2,
+          "hint": "Differentiate the equation $x^2 + y^2 = 10^2$ with respect to time $t$."
+        },
+        {
+          "step": 3,
+          "hint": "Substitute the known values ($x=6, dx/dt=2$) and solve for $dy/dt$."
+        }
+      ],
+      "solution": "By $x^2 + y^2 = 100$, we get $2x(dx/dt) + 2y(dy/dt) = 0$. When $x=6$, $y=8$. So, $2(6)(2) + 2(8)(dy/dt) = 0 \\implies 16(dy/dt) = -24 \\implies dy/dt = -1.5$ ft/s.",
+      "multiple_representations": {
+        "algebraic": "Implicit differentiation of the geometric constraint equation.",
+        "visual": "A right triangle where the hypotenuse is constant and the two legs are changing over time."
+      },
+      "concepts": ["related rates", "implicit differentiation", "Pythagorean theorem"],
+      "real_world_context": "Physics/Construction"
+    },
+    {
+      "problem_id": "INT_001",
+      "topic": "Integration and FTOC",
+      "sub_topic": "Fundamental Theorem of Calculus",
+      "difficulty": 3,
+      "pedagogical_principle": "Scaffolding Steps",
+      "problem_statement": "Find the derivative of the function $F(x) = \\int_0^{x^2} \\sqrt{1 + t^3} dt$.",
+      "scaffolding": [
+        {
+          "step": 1,
+          "hint": "Identify this as a composite function $F(x) = G(u(x))$ where $u(x) = x^2$."
+        },
+        {
+          "step": 2,
+          "hint": "Apply the Fundamental Theorem of Calculus (Part 1) and the Chain Rule."
+        }
+      ],
+      "solution": "By FTOC and Chain Rule: $F'(x) = \\sqrt{1 + (x^2)^3} \\cdot \\frac{d}{dx}(x^2) = 2x\\sqrt{1 + x^6}$.",
+      "multiple_representations": {
+        "algebraic": "Combining accumulation functions with differentiation rules.",
+        "conceptual": "The rate of change of an area function with a variable upper limit."
+      },
+      "concepts": ["FTOC", "chain rule", "accumulation function"],
+      "real_world_context": "Calculus Theory"
+    },
+    {
+      "problem_id": "MVC_001",
+      "topic": "Multivariable Calculus",
+      "sub_topic": "Partial Derivatives",
+      "difficulty": 3,
+      "pedagogical_principle": "Multiple Representations",
+      "problem_statement": "Find the partial derivatives $f_x$ and $f_y$ for the function $f(x, y) = e^{xy} + \\ln(x^2 + y^2)$.",
+      "scaffolding": [
+        {
+          "step": 1,
+          "hint": "To find $f_x$, treat $y$ as a constant and differentiate with respect to $x$."
+        },
+        {
+          "step": 2,
+          "hint": "To find $f_y$, treat $x$ as a constant and differentiate with respect to $y$."
+        }
+      ],
+      "solution": "$f_x = y e^{xy} + \\frac{2x}{x^2 + y^2}$; $f_y = x e^{xy} + \\frac{2y}{x^2 + y^2}$.",
+      "multiple_representations": {
+        "algebraic": "Partial differentiation using standard single-variable rules while fixing one coordinate.",
+        "visual": "These derivatives represent the slope of the surface $z=f(x,y)$ in the direction of the x and y axes respectively."
+      },
+      "concepts": ["partial derivatives", "chain rule", "exponential functions"],
+      "real_world_context": "Optimization/Data Science"
+    }
+  ]
+}

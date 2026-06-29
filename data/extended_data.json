@@ -1,0 +1,224 @@
+{
+  "dataset_info": {
+    "name": "Undergraduate Calculus Comprehensive Pedagogical Dataset",
+    "version": "3.0",
+    "description": "Expanded dataset covering all 11 core calculus knowledge points with pedagogical integration.",
+    "total_problems": 11
+  },
+  "problems": [
+    {
+      "problem_id": "LIM_002",
+      "topic": "Limits and Continuity",
+      "sub_topic": "L'Hôpital's Rule",
+      "difficulty": 3,
+      "pedagogical_principle": "Scaffolding Steps",
+      "problem_statement": "Evaluate the limit: $\\\\lim_{x \\to 0} \\frac{e^x - 1 - x}{x^2}$.",
+      "scaffolding": [
+        { "step": 1, "hint": "Substitute $x=0$ into the expression. Is it an indeterminate form like $0/0$?" },
+        { "step": 2, "hint": "Apply L'Hôpital's Rule by differentiating the numerator and denominator separately." },
+        { "step": 3, "hint": "If the result is still $0/0$, apply the rule a second time." }
+      ],
+      "solution": "The limit is of form $0/0$. First derivative: $\\\\lim_{x \\to 0} \\frac{e^x - 1}{2x}$ (still $0/0$). Second derivative: $\\\\lim_{x \\to 0} \\frac{e^x}{2} = \\frac{1}{2}$.",
+      "multiple_representations": {
+        "algebraic": "Repeated differentiation to resolve indeterminate growth rates.",
+        "visual": "The parabola $x^2$ and the exponential curve $e^x-1-x$ both approach zero, but their ratio stabilizes at 0.5."
+      },
+      "concepts": ["L'Hôpital's Rule", "indeterminate forms", "Taylor expansion"],
+      "real_world_context": "Algorithm Complexity Analysis"
+    },
+    {
+      "problem_id": "DER_002",
+      "topic": "Derivatives",
+      "sub_topic": "Chain Rule",
+      "difficulty": 3,
+      "pedagogical_principle": "Conceptual Engagement",
+      "problem_statement": "Find the derivative of $y = \\sin(x^2 + e^x)$.",
+      "scaffolding": [
+        { "step": 1, "hint": "Identify the 'outer' function $f(u)$ and the 'inner' function $u(x)$." },
+        { "step": 2, "hint": "Apply the rule $\\frac{dy}{dx} = f'(u) \\cdot u'(x)$." }
+      ],
+      "solution": "Let $u = x^2 + e^x$, then $y = \\sin(u)$. $dy/du = \\cos(u)$ and $du/dx = 2x + e^x$. Result: $\\cos(x^2 + e^x) \\cdot (2x + e^x)$.",
+      "multiple_representations": {
+        "algebraic": "Function composition differentiation.",
+        "conceptual": "Linking the rate of change of the input to the rate of change of the oscillating output."
+      },
+      "concepts": ["chain rule", "trigonometric derivatives", "composition"],
+      "real_world_context": "Signal Processing"
+    },
+    {
+      "problem_id": "APP_001",
+      "topic": "Applications of Derivatives",
+      "sub_topic": "Optimization",
+      "difficulty": 4,
+      "pedagogical_principle": "Contextualized Learning",
+      "problem_statement": "A farmer has 1200m of fencing and wants to enclose a rectangular field that borders a straight river. He needs no fence along the river. What are the dimensions of the field that has the largest area?",
+      "scaffolding": [
+        { "step": 1, "hint": "Let $x$ be the length perpendicular to the river and $y$ be the length parallel. Write the constraint equation for the fence length." },
+        { "step": 2, "hint": "Express the Area $A = x \\cdot y$ in terms of a single variable." },
+        { "step": 3, "hint": "Find the derivative $A'$ and set it to zero to find the critical point." }
+      ],
+      "solution": "Constraint: $2x + y = 1200 \\implies y = 1200 - 2x$. Area $A = x(1200 - 2x) = 1200x - 2x^2$. $A' = 1200 - 4x = 0 \\implies x = 300$. Thus $y = 600$. Max Area = $180,000 m^2$.",
+      "multiple_representations": {
+        "visual": "A rectangle with one side missing, showing how $x$ and $y$ trade off.",
+        "algebraic": "Quadratic optimization and vertex finding."
+      },
+      "concepts": ["optimization", "critical points", "constrained extrema"],
+      "real_world_context": "Resource Management/Agriculture"
+    },
+    {
+      "problem_id": "INT_IND_001",
+      "topic": "Indefinite Integrals",
+      "sub_topic": "Integration by Parts",
+      "difficulty": 4,
+      "pedagogical_principle": "Multiple Representations",
+      "problem_statement": "Calculate $\\int x \\ln(x) dx$.",
+      "scaffolding": [
+        { "step": 1, "hint": "Use the LIATE rule to choose $u$ and $dv$. Should $u$ be $x$ or $\\ln(x)$?" },
+        { "step": 2, "hint": "Apply the formula $\\int u dv = uv - \\int v du$." }
+      ],
+      "solution": "Let $u = \\ln(x), dv = x dx$. Then $du = 1/x dx, v = x^2/2$. $\\int x \\ln(x) dx = \\frac{x^2}{2}\\ln(x) - \\int \\frac{x^2}{2} \\cdot \\frac{1}{x} dx = \\frac{x^2}{2}\\ln(x) - \\frac{x^2}{4} + C$.",
+      "multiple_representations": {
+        "algebraic": "Reversing the product rule for differentiation.",
+        "conceptual": "Decomposing the integral of a product into simpler parts."
+      },
+      "concepts": ["integration by parts", "logarithmic functions", "antiderivatives"],
+      "real_world_context": "Entropy Calculations in Information Theory"
+    },
+    {
+      "problem_id": "INT_DEF_001",
+      "topic": "Definite Integrals",
+      "sub_topic": "Riemann Sums",
+      "difficulty": 4,
+      "pedagogical_principle": "Conceptual Engagement",
+      "problem_statement": "Express the limit $\\lim_{n \\to \\infty} \\sum_{i=1}^n \\frac{1}{n} \\sqrt{1 + \\frac{i}{n}}$ as a definite integral.",
+      "scaffolding": [
+        { "step": 1, "hint": "Identify $\\Delta x$ and the sample points $x_i$ in the summation." },
+        { "step": 2, "hint": "Match the form to $\\int_a^b f(x) dx$ where $x_i = a + i\\Delta x$." }
+      ],
+      "solution": "Here $\\Delta x = 1/n$, $a=0, b=1$. The function is $f(x) = \\sqrt{1+x}$. The integral is $\\int_0^1 \\sqrt{1+x} dx$.",
+      "multiple_representations": {
+        "visual": "The area under $\\sqrt{1+x}$ being approximated by $n$ rectangles of width $1/n$.",
+        "algebraic": "Conversion between discrete summation and continuous integration."
+      },
+      "concepts": ["Riemann Sum", "definite integral definition", "limits"],
+      "real_world_context": "Numerical Approximation"
+    },
+    {
+      "problem_id": "APP_INT_001",
+      "topic": "Applications of Integration",
+      "sub_topic": "Volume of Revolution",
+      "difficulty": 4,
+      "pedagogical_principle": "Multiple Representations",
+      "problem_statement": "Find the volume of the solid obtained by rotating the region bounded by $y=x^2$ and $y=4$ about the y-axis.",
+      "scaffolding": [
+        { "step": 1, "hint": "Since we rotate about the y-axis, express $x$ in terms of $y$ ($x = \\sqrt{y}$)." },
+        { "step": 2, "hint": "Use the Disk Method: $V = \\pi \\int_c^d [R(y)]^2 dy$." }
+      ],
+      "solution": "$V = \\pi \\int_0^4 (\\sqrt{y})^2 dy = \\pi \\int_0^4 y dy = \\pi [y^2/2]_0^4 = 8\\pi$.",
+      "multiple_representations": {
+        "visual": "A 3D paraboloid shape formed by spinning a curve.",
+        "algebraic": "Summing infinitesimal circular disks of radius $\\sqrt{y}$."
+      },
+      "concepts": ["volume of revolution", "disk method", "definite integrals"],
+      "real_world_context": "Mechanical Part Manufacturing (Lathing)"
+    },
+    {
+      "problem_id": "MVC_002",
+      "topic": "Multivariable Calculus",
+      "sub_topic": "Lagrange Multipliers",
+      "difficulty": 5,
+      "pedagogical_principle": "Scaffolding Steps",
+      "problem_statement": "Find the maximum and minimum values of $f(x, y) = x + 2y$ subject to the constraint $x^2 + y^2 = 5$.",
+      "scaffolding": [
+        { "step": 1, "hint": "Set up the Lagrange system: $\\nabla f = \\lambda \\nabla g$ and $g(x,y)=k$." },
+        { "step": 2, "hint": "Differentiate: $1 = \\lambda(2x)$ and $2 = \\lambda(2y)$." },
+        { "step": 3, "hint": "Solve for $x$ and $y$ in terms of $\\lambda$, then plug into the constraint." }
+      ],
+      "solution": "From equations: $x=1/(2\\lambda), y=1/\\lambda$. Plug into constraint: $(1/2\\lambda)^2 + (1/\\lambda)^2 = 5 \\implies 5/(4\\lambda^2) = 5 \\implies \\lambda = \\pm 1/2$. Points are $(1, 2)$ and $(-1, -2)$. Max value is 5, Min is -5.",
+      "multiple_representations": {
+        "visual": "The point where the level curve of $f$ is tangent to the constraint circle.",
+        "algebraic": "Solving a system of non-linear equations."
+      },
+      "concepts": ["Lagrange Multipliers", "constrained optimization", "gradients"],
+      "real_world_context": "Portfolio Optimization in Finance"
+    },
+    {
+      "problem_id": "MULT_INT_001",
+      "topic": "Multiple Integrals",
+      "sub_topic": "Polar Coordinates",
+      "difficulty": 4,
+      "pedagogical_principle": "Conceptual Engagement",
+      "problem_statement": "Evaluate $\\iint_D (x^2 + y^2) dA$, where $D$ is the unit disk $x^2 + y^2 \\leq 1$.",
+      "scaffolding": [
+        { "step": 1, "hint": "Convert to polar coordinates: $x^2+y^2 = r^2$ and $dA = r dr d\\theta$." },
+        { "step": 2, "hint": "Determine the limits for $r$ (from 0 to 1) and $\\theta$ (from 0 to $2\\pi$)." }
+      ],
+      "solution": "$\\int_0^{2\\pi} \\int_0^1 r^2 \\cdot r dr d\\theta = \\int_0^{2\\pi} [r^4/4]_0^1 d\\theta = \\int_0^{2\\pi} 1/4 d\\theta = \\pi/2$.",
+      "multiple_representations": {
+        "visual": "Integrating over a circular region using radial slices.",
+        "algebraic": "Simplifying complex Cartesian integrals using symmetry."
+      },
+      "concepts": ["double integrals", "polar coordinates", "Jacobian determinant"],
+      "real_world_context": "Calculating Moment of Inertia"
+    },
+    {
+      "problem_id": "VEC_001",
+      "topic": "Vector Calculus",
+      "sub_topic": "Green's Theorem",
+      "difficulty": 5,
+      "pedagogical_principle": "Multiple Representations",
+      "problem_statement": "Use Green's Theorem to evaluate $\\oint_C (y^2 dx + 3xy dy)$ where $C$ is the boundary of the upper semi-circle $x^2+y^2=1, y \\geq 0$.",
+      "scaffolding": [
+        { "step": 1, "hint": "Identify $P = y^2$ and $Q = 3xy$." },
+        { "step": 2, "hint": "Calculate $\\frac{\\partial Q}{\\partial x} - \\frac{\\partial P}{\\partial y}$." },
+        { "step": 3, "hint": "Set up the double integral over the semi-circular region $D$." }
+      ],
+      "solution": "$\\frac{\\partial Q}{\\partial x} = 3y, \\frac{\\partial P}{\\partial y} = 2y$. Integrand becomes $3y - 2y = y$. $\\iint_D y dA$ in polar: $\\int_0^{\\pi} \\int_0^1 (r\\sin\\theta) r dr d\\theta = \\int_0^{\\pi} \\sin\\theta [r^3/3]_0^1 d\\theta = 2/3$.",
+      "multiple_representations": {
+        "algebraic": "Converting a line integral into a double integral.",
+        "conceptual": "Linking circulation around a path to the 'curl' over the area."
+      },
+      "concepts": ["Green's Theorem", "line integrals", "curl"],
+      "real_world_context": "Fluid Flow and Circulation"
+    },
+    {
+      "problem_id": "SER_001",
+      "topic": "Infinite Series",
+      "sub_topic": "Taylor Series",
+      "difficulty": 4,
+      "pedagogical_principle": "Contextualized Learning",
+      "problem_statement": "Find the first three non-zero terms of the Taylor series for $f(x) = \\cos(x)$ centered at $a = 0$.",
+      "scaffolding": [
+        { "step": 1, "hint": "Calculate the derivatives $f'(x), f''(x), f'''(x), f^{(4)}(x)$ at $x=0$." },
+        { "step": 2, "hint": "Apply the formula $P_n(x) = \\sum \\frac{f^{(n)}(0)}{n!}x^n$." }
+      ],
+      "solution": "$f(0)=1, f'(0)=0, f''(0)=-1, f'''(0)=0, f^{(4)}(0)=1$. The series is $1 - \\frac{x^2}{2!} + \\frac{x^4}{4!} - \\dots$.",
+      "multiple_representations": {
+        "visual": "Showing how higher-order polynomials 'hug' the cosine curve more closely.",
+        "algebraic": "Approximating transcendental functions with power series."
+      },
+      "concepts": ["Taylor series", "Maclaurin series", "polynomial approximation"],
+      "real_world_context": "AI/Machine Learning (Optimization functions)"
+    },
+    {
+      "problem_id": "ODE_001",
+      "topic": "Differential Equations",
+      "sub_topic": "Separable ODEs",
+      "difficulty": 3,
+      "pedagogical_principle": "Contextualized Learning",
+      "problem_statement": "Solve the differential equation $\\frac{dy}{dx} = \\frac{x}{y}$ with initial condition $y(0) = 2$.",
+      "scaffolding": [
+        { "step": 1, "hint": "Separate variables: move all $y$ terms to the left and $x$ terms to the right." },
+        { "step": 2, "hint": "Integrate both sides: $\\int y dy = \\int x dx$." },
+        { "step": 3, "hint": "Use the initial condition to solve for the constant $C$." }
+      ],
+      "solution": "$y dy = x dx \\implies y^2/2 = x^2/2 + C$. At $(0,2)$, $4/2 = 0 + C \\implies C=2$. Solution: $y^2 = x^2 + 4 \\implies y = \\sqrt{x^2+4}$ (since $y(0)>0$)." ,
+      "multiple_representations": {
+        "visual": "A slope field showing how the solution curve follows the vector directions.",
+        "algebraic": "Finding a specific function that satisfies a rate-of-change relationship."
+      },
+      "concepts": ["separable equations", "initial value problems", "integration"],
+      "real_world_context": "Population Growth or Cooling Models"
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+后端
+python api_server.py
+
+前端
+cd t2p-web
+npm run dev
