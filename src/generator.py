@@ -9,6 +9,7 @@ from typing import List, Dict, Optional, Any
 from src.config import Config
 from src.ai_client import AIClient
 from src.pipeline import GenerationPipeline
+from src.postprocessor import PostProcessor
 
 logger = logging.getLogger(__name__)
 
@@ -20,13 +21,14 @@ class ProblemGenerator:
         """Initialize generator with explicit dependencies (prefer AppCore injection)."""
         self.data_loader = data_loader
         self.ai_client = ai_client or AIClient()
+        self.postprocessor = postprocessor or PostProcessor()
 
         # Shared components from AppCore (or fallback)
         self.pipeline = GenerationPipeline(
             data_loader=data_loader,
             ai_client=self.ai_client,
             evaluator=evaluator,
-            postprocessor=postprocessor
+            postprocessor=self.postprocessor
         )
 
     def generate_one(self, topics: List[str], mode: str = "drill",

@@ -44,7 +44,7 @@ class GradingService:
                 ocr_text = self.ocr.extract(image_bytes)
                 if ocr_text:
                     text_answer = ocr_text
-                    logger.info(f"OCR result: {ocr_text[:80]}...")
+                    logger.info("OCR completed successfully")
                 else:
                     logger.info("OCR returned no text — using visual submission note")
             except Exception as e:
@@ -52,7 +52,7 @@ class GradingService:
         elif raw_input and len(raw_input) < 500:
             # Text answer (MCQ option or short text)
             text_answer = raw_input.strip()
-            logger.info(f"Text input: {text_answer}")
+            logger.info("Text answer received")
         else:
             text_answer = raw_input
 
@@ -66,6 +66,12 @@ class GradingService:
         - MCQ text: correct → 100, incorrect → cap at 30
         - Handwritten image: correct < 60 → boost to 80, else keep raw
         """
+        try:
+            raw_score = int(raw_score)
+        except (TypeError, ValueError):
+            raw_score = 0
+        raw_score = max(0, min(100, raw_score))
+
         if is_text_mcq:
             if is_correct:
                 return 100
@@ -117,6 +123,9 @@ class GradingService:
         )
 
         # 4. Parse AI response
+        if not raw_review:
+            return {"success": False, "error": "AI grading returned an empty response"}
+
         try:
             cleaned = raw_review.strip().replace("```json", "").replace("```", "").strip()
             review_json = json.loads(cleaned)
@@ -127,7 +136,8 @@ class GradingService:
         # 5. Score calibration
         is_correct = review_json.get("is_correct", False)
         raw_score = review_json.get("logic_alignment_score", 0)
-        final_score = self._calibrate_score(is_correct, raw_score, bool(text_answer))
+        is_text_mcq = bool(problem.get("options")) and image_bytes is None and bool(text_answer)
+        final_score = self._calibrate_score(is_correct, raw_score, is_text_mcq)
 
         return {
             "success": True,

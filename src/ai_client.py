@@ -4,8 +4,7 @@ Supports: sync/async text generation, multimodal image review, 429 auto-retry.
 """
 import logging
 import time
-import base64
-import json
+import asyncio
 from typing import Optional, Union, List, Dict
 from openai import OpenAI, AsyncOpenAI
 
@@ -26,9 +25,11 @@ class AIClient:
         self.base_url = Config.DEEPSEEK_BASE_URL
         self.model_name = Config.DEEPSEEK_MODEL
 
+        self.client = None
+        self.async_client = None
         if not self.api_key:
-            logger.error("DEEPSEEK_API_KEY is empty! Please set it in .env")
-            raise RuntimeError("DEEPSEEK_API_KEY not configured")
+            logger.warning("DEEPSEEK_API_KEY is not configured; AI endpoints are unavailable")
+            return
 
         try:
             self.client = OpenAI(
@@ -43,6 +44,16 @@ class AIClient:
         except Exception as e:
             logger.error(f"DeepSeek client init failed: {e}")
             raise
+
+    @property
+    def configured(self) -> bool:
+        return bool(self.api_key and self.client and self.async_client)
+
+    def _require_configured(self) -> None:
+        if not self.configured:
+            raise RuntimeError(
+                "DEEPSEEK_API_KEY is not configured. Copy .env.example to .env and add a valid key."
+            )
 
     def _build_messages(self, prompt: str, image_bytes: Optional[bytes] = None,
                         mime_type: str = "image/jpeg") -> List[Dict]:
@@ -81,19 +92,20 @@ class AIClient:
             response_mime_type: Ignored (kept for backward compat; DeepSeek uses prompt-based JSON control)
             temperature: Generation temperature (0.0 - 2.0)
         """
+        self._require_configured()
         messages = self._build_messages(prompt, image_bytes, mime_type)
 
-        for attempt in range(3):
+        for attempt in range(Config.MAX_RETRIES):
             try:
                 task_label = "Visual Audit" if image_bytes else "Text generation"
-                logger.info(f"{task_label} | Request attempt {attempt + 1}/3...")
+                logger.info(f"{task_label} | Request attempt {attempt + 1}/{Config.MAX_RETRIES}...")
 
                 response = self.client.chat.completions.create(
                     model=self.model_name,
                     messages=messages,
                     temperature=temperature,
-                    max_tokens=16384,
-                    top_p=0.95
+                    max_tokens=Config.DEFAULT_MAX_TOKENS,
+                    top_p=Config.DEFAULT_TOP_P
                 )
 
                 if response and response.choices:
@@ -112,7 +124,7 @@ class AIClient:
                 err_msg = str(e)
                 # DeepSeek rate limiting / busy
                 if "429" in err_msg or "rate_limit" in err_msg.lower() or "busy" in err_msg.lower():
-                    if attempt < 2:
+                    if attempt < Config.MAX_RETRIES - 1:
                         wait_time = 90
                         logger.warning(f"Rate limited (429/busy). Waiting {wait_time}s...")
                         time.sleep(wait_time)
@@ -122,7 +134,7 @@ class AIClient:
                     logger.error(f"Context length exceeded: {err_msg}")
                     return None
 
-                if attempt < 2:
+                if attempt < Config.MAX_RETRIES - 1:
                     logger.warning(f"Temporary error: {err_msg}. Retrying in 5s...")
                     time.sleep(5)
                     continue
@@ -138,19 +150,20 @@ class AIClient:
         """
         Async version of generate() — non-blocking API call for FastAPI endpoints.
         """
+        self._require_configured()
         messages = self._build_messages(prompt, image_bytes, mime_type)
 
-        for attempt in range(3):
+        for attempt in range(Config.MAX_RETRIES):
             try:
                 task_label = "Visual Audit" if image_bytes else "Text generation"
-                logger.info(f"Async {task_label} | Attempt {attempt + 1}/3...")
+                logger.info(f"Async {task_label} | Attempt {attempt + 1}/{Config.MAX_RETRIES}...")
 
                 response = await self.async_client.chat.completions.create(
                     model=self.model_name,
                     messages=messages,
                     temperature=temperature,
-                    max_tokens=16384,
-                    top_p=0.95
+                    max_tokens=Config.DEFAULT_MAX_TOKENS,
+                    top_p=Config.DEFAULT_TOP_P
                 )
 
                 if response and response.choices:
@@ -161,11 +174,11 @@ class AIClient:
             except Exception as e:
                 err_msg = str(e)
                 if "429" in err_msg or "rate_limit" in err_msg.lower():
-                    if attempt < 2:
-                        await __import__('asyncio').sleep(90)
+                    if attempt < Config.MAX_RETRIES - 1:
+                        await asyncio.sleep(90)
                         continue
-                if attempt < 2:
-                    await __import__('asyncio').sleep(5)
+                if attempt < Config.MAX_RETRIES - 1:
+                    await asyncio.sleep(5)
                     continue
                 else:
                     logger.error(f"Async all retries exhausted: {err_msg}")
@@ -173,7 +186,7 @@ class AIClient:
         return None
 
     def mentor_review(self, student_work_image: Optional[bytes] = None,
-                      problem_data: Dict = {},
+                      problem_data: Optional[Dict] = None,
                       is_exam_mode: bool = False,
                       student_text_answer: Optional[str] = None) -> str:
         """
@@ -185,6 +198,7 @@ class AIClient:
             is_exam_mode: Strict exam mode (no hints)
             student_text_answer: Multiple-choice or text answer submitted by student
         """
+        problem_data = problem_data or {}
         scaffolding_info = (
             "Not available (exam mode prohibited prompt)"
             if is_exam_mode

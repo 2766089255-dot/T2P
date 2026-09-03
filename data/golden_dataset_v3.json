@@ -4025,7 +4025,7 @@
         "issues": [],
         "ai_feedback": "Flaw: None. The problem is a well-constructed, classic optimization problem with a correct solution, logical scaffolding, and well-chosen distractors. | Suggestion: To deepen conceptual understanding, consider adding a follow-up question asking for the coordinates of the closest point(s) on the parabola, or exploring the geometric relationship between the shortest line segment and the tangent line at that point (they are perpendicular)."
       },
-      "problem_id": "V3_APP_MCQ_01",
+      "problem_id": "V3_APPDER_MCQ_01",
       "type": "mcq"
     },
     {
@@ -4086,7 +4086,7 @@
         "issues": [],
         "ai_feedback": "Flaw: None | Suggestion: The provided solution uses the method of expressing the squared distance as a function of 'y'. It would be beneficial for students to also see or be made aware of the alternative method: expressing the squared distance as a function of 'x' (S(x) = x^2 + (x^2-3)^2), which leads to a quartic polynomial in x. Showing that both methods yield the same result reinforces the idea that there can be multiple valid approaches to a problem."
       },
-      "problem_id": "V3_APP_MCQ_02",
+      "problem_id": "V3_APPDER_MCQ_02",
       "type": "mcq"
     },
     {
@@ -4144,7 +4144,7 @@
         "issues": [],
         "ai_feedback": "Flaw: None | Suggestion: The scaffolding is very good but omits the crucial step of verifying that the critical point yields a maximum. A step should be added between the current steps 3 and 4 prompting the student to use the First or Second Derivative Test to confirm the nature of the extremum. The solution correctly performs this check, but the scaffolding should guide the student to do the same."
       },
-      "problem_id": "V3_APP_MCQ_03",
+      "problem_id": "V3_APPDER_MCQ_03",
       "type": "mcq"
     },
     {
@@ -4221,7 +4221,7 @@
         "issues": [],
         "ai_feedback": "Flaw: None. The problem is a well-constructed, classic optimization problem with accurate mathematics and well-designed distractors based on common student errors. | Suggestion: Include a diagram showing the parabola and an example of the inscribed rectangle in the problem statement. This would aid visual learners in setting up the area function correctly, particularly in understanding that the width is `2x` and not `x`."
       },
-      "problem_id": "V3_APP_MCQ_04",
+      "problem_id": "V3_APPDER_MCQ_04",
       "type": "mcq"
     },
     {
@@ -4279,7 +4279,7 @@
         "issues": [],
         "ai_feedback": "Flaw: None | Suggestion: The solution finds the critical point but does not formally verify that it corresponds to a minimum (e.g., using the First or Second Derivative Test). Adding a scaffolding step or a note in the solution to verify the nature of the critical point would enhance mathematical rigor."
       },
-      "problem_id": "V3_APP_MCQ_05",
+      "problem_id": "V3_APPDER_MCQ_05",
       "type": "mcq"
     },
     {
@@ -4340,7 +4340,7 @@
         "issues": [],
         "ai_feedback": "Flaw: The solution does not explicitly verify that the found critical point corresponds to a maximum (e.g., by using the First or Second Derivative Test). While the result is correct for this problem, omitting this step is a lack of mathematical rigor. | Suggestion: Add a scaffolding step or a sub-hint that prompts the student to verify that the critical point yields a maximum area. For example: 'Step 5: Verify that the value of x you found corresponds to a maximum area using the First or Second Derivative Test. Then, calculate the maximum area.'"
       },
-      "problem_id": "V3_APP_FILL_IN_01",
+      "problem_id": "V3_APPDER_FILL_IN_01",
       "type": "fill_in"
     },
     {
@@ -4401,7 +4401,7 @@
         "issues": [],
         "ai_feedback": "Flaw: None. The problem is a canonical, well-executed example of a calculus optimization problem. | Suggestion: The problem is excellent for its purpose. To extend student thinking, a follow-up question could be added, such as 'What is the maximum volume of the box?' or 'What is the ratio of the height to the width in the optimized box?'. This would require students to use their answer for a subsequent calculation."
       },
-      "problem_id": "V3_APP_FILL_IN_02",
+      "problem_id": "V3_APPDER_FILL_IN_02",
       "type": "fill_in"
     },
     {
@@ -4462,7 +4462,7 @@
         "issues": [],
         "ai_feedback": "Flaw: The final scaffolding step (Step 5) reveals the critical value of `x` (`\\\\sqrt{50}`), which the student is supposed to find in the previous step. This undermines the problem-solving process by giving away a key intermediate answer. | Suggestion: The hint for Step 5 should be rephrased to prompt the student to use their own result from Step 4. For example: 'Substitute the value of `x` you found in the previous step back into the original area function `A(x) = 2x\\\\sqrt{100-x^2}` to find the maximum possible area.' This change would require the student to connect the steps themselves."
       },
-      "problem_id": "V3_APP_FILL_IN_03",
+      "problem_id": "V3_APPDER_FILL_IN_03",
       "type": "fill_in"
     },
     {
@@ -4519,7 +4519,7 @@
         "issues": [],
         "ai_feedback": "Flaw: The scaffolding is overly prescriptive. It provides the explicit area function, its derivative, and the critical value of 'x', effectively solving the majority of the problem for the student rather than guiding their thought process. This reduces a conceptual optimization problem to a simple substitution exercise. | Suggestion: Revise the scaffolding to use guiding questions instead of providing answers. For example, Step 1 could be: 'If the right corner of the rectangle's base is at (x, 0), what are the expressions for the rectangle's width and height?'. Step 3 could be: 'After finding the derivative A'(x), what is the next step to find a potential maximum?'. This encourages the student to perform the key steps themselves."
       },
-      "problem_id": "V3_APP_FILL_IN_04",
+      "problem_id": "V3_APPDER_FILL_IN_04",
       "type": "fill_in"
     },
     {
@@ -4576,7 +4576,7 @@
         "issues": [],
         "ai_feedback": "Flaw: The problem, while mathematically sound and well-structured, uses an extremely common context (the 'farmer's fence') which may feel uninspired or overly familiar to students who have seen multiple examples. | Suggestion: To enhance rigor, the problem could prompt the student to justify why the found local maximum is an absolute maximum. This could be done by asking them to consider the function's domain (e.g., for A(y), y must be greater than 0 and less than 200) and evaluating the function at the endpoints of this closed interval, reinforcing the Extreme Value Theorem."
       },
-      "problem_id": "V3_APP_FILL_IN_05",
+      "problem_id": "V3_APPDER_FILL_IN_05",
       "type": "fill_in"
     },
     {

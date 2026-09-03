@@ -5,14 +5,11 @@ T2P API Server (V6.0 — Structural Refactor)
 - Async endpoints for non-blocking AI calls
 - Slim controllers: validate → delegate → respond
 """
-import os
-# HF endpoint — set to empty to skip SentenceTransformer download (demo mode)
-os.environ['HF_ENDPOINT'] = ''
-
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from typing import List, Optional
+from pydantic import BaseModel, Field
+from starlette.concurrency import run_in_threadpool
+from typing import List, Optional, Literal
 import uvicorn
 import json
 import time
@@ -23,11 +20,16 @@ from pathlib import Path
 from src.core import AppCore
 from src.services.grading import GradingService
 from src.user_session import UserSession
+from src.config import Config
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("api_server")
 
-app = FastAPI(title="T2P API Server")
+app = FastAPI(
+    title="T2P AI Mentor API",
+    version="1.0.0",
+    description="Adaptive calculus problem generation, grading, and learning analytics.",
+)
 
 
 # ---------- Middleware ----------
@@ -43,7 +45,7 @@ async def log_requests(request: Request, call_next):
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:3001", "http://127.0.0.1:3000", "http://127.0.0.1:3001"],
+    allow_origins=Config.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -56,18 +58,29 @@ grading_service = GradingService()
 
 # ---------- Request/Response Models ----------
 class GenerateRequest(BaseModel):
-    topics: List[str] = []
-    num: int = 1
-    mode: str = "drill"
-    difficulty: int = 3
-    question_type: str = "calculation"
-    user_id: Optional[str] = None
+    topics: List[str] = Field(default_factory=list, max_length=20)
+    num: int = Field(default=1, ge=1, le=10)
+    mode: Literal["drill", "exam"] = "drill"
+    difficulty: int = Field(default=3, ge=1, le=5)
+    question_type: Literal["calculation", "mcq", "fill_in"] = "calculation"
+    user_id: Optional[str] = Field(default=None, min_length=1, max_length=128)
 
 
 class AuditRequest(BaseModel):
-    problem_id: str
-    student_work_image: str
+    problem_id: str = Field(min_length=1, max_length=128)
+    student_work_image: str = Field(min_length=1, max_length=12_000_000)
     is_exam_mode: bool = False
+
+
+class LoginRequest(BaseModel):
+    user_id: str = Field(min_length=1, max_length=128)
+
+
+class RecordRequest(BaseModel):
+    user_id: str = Field(min_length=1, max_length=128)
+    topic: str = Field(min_length=1, max_length=256)
+    logic_alignment_score: float = Field(default=0, ge=0, le=100)
+    is_correct: bool = False
 
 
 # ---------- Health ----------
@@ -81,23 +94,24 @@ def read_root():
 
 
 @app.get("/health")
-async def health_check():
-    """Connectivity health check — verifies DeepSeek API is reachable."""
+async def health_check(check_provider: bool = False):
+    """Return local readiness; optionally make a live provider request."""
     status = {
         "api": "healthy",
         "model": core.config.DEEPSEEK_MODEL,
-        "deepseek": "unknown",
+        "deepseek": "configured" if core.ai_client.configured else "not_configured",
         "dataset": f"{len(core.data_loader.problems)} problems / {len(core.data_loader.topics_map)} topics"
     }
-    try:
-        # Quick connectivity test — generate a tiny response
-        test_response = core.ai_client.generate(
-            prompt="Reply with only the word 'OK'. No other text.",
-            temperature=0.0
-        )
-        status["deepseek"] = "reachable" if test_response and "OK" in test_response else "unexpected_response"
-    except Exception as e:
-        status["deepseek"] = f"unreachable: {str(e)[:80]}"
+    if check_provider and core.ai_client.configured:
+        try:
+            test_response = await core.ai_client.generate_async(
+                prompt="Reply with only the word 'OK'. No other text.",
+                temperature=0.0,
+            )
+            status["deepseek"] = "reachable" if test_response and "OK" in test_response else "unexpected_response"
+        except Exception as exc:
+            logger.warning("Provider health check failed: %s", exc)
+            status["deepseek"] = "unreachable"
     return status
 
 
@@ -120,14 +134,11 @@ async def get_all_topics():
 
 # ---------- User Management ----------
 @app.post("/user/login")
-def login_user(payload: dict):
-    user_id = payload.get("user_id")
-    if not user_id:
-        raise HTTPException(status_code=400, detail="user_id required")
-    session = UserSession(user_id)
+def login_user(payload: LoginRequest):
+    session = UserSession(payload.user_id)
     return {
         "success": True,
-        "user_id": user_id,
+        "user_id": payload.user_id,
         "total_topics": len(session.roadmap),
         "progress": session.progress["topics_status"]
     }
@@ -135,7 +146,10 @@ def login_user(payload: dict):
 
 @app.get("/user/progress/{user_id}")
 def get_progress(user_id: str):
-    session = UserSession(user_id)
+    try:
+        session = UserSession(user_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     return {
         "success": True,
         "user_id": user_id,
@@ -145,18 +159,10 @@ def get_progress(user_id: str):
 
 
 @app.post("/user/record")
-def record_result(payload: dict):
-    user_id = payload.get("user_id")
-    topic = payload.get("topic")
-    logic_score = payload.get("logic_alignment_score", 0)
-    is_passed = payload.get("is_correct", False)
-
-    if not user_id or not topic:
-        raise HTTPException(status_code=400, detail="user_id and topic required")
-
-    session = UserSession(user_id)
+def record_result(payload: RecordRequest):
+    session = UserSession(payload.user_id)
     try:
-        session.record_result(topic, logic_score, is_passed)
+        session.record_result(payload.topic, payload.logic_alignment_score, payload.is_correct)
         return {"success": True}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -175,7 +181,11 @@ async def generate_questions(req: GenerateRequest):
                 req.mode = recommended["mode"]
                 logger.info(f"Adaptive: User {req.user_id} → {recommended['topic']}")
 
-        problems = core.generator.generate_batch(
+        if not req.topics:
+            raise HTTPException(status_code=422, detail="topics are required when user_id is not provided")
+
+        problems = await run_in_threadpool(
+            core.generator.generate_batch,
             topics=req.topics,
             num=req.num,
             mode=req.mode,
@@ -203,9 +213,14 @@ async def generate_questions(req: GenerateRequest):
 
         return {"success": True, "data": problems}
 
-    except Exception as e:
-        logger.error(f"Problem generation exception: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+    except HTTPException:
+        raise
+    except RuntimeError as exc:
+        logger.warning("Problem generation unavailable: %s", exc)
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.error(f"Problem generation exception: {exc}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Problem generation failed") from exc
 
 
 # ---------- Intelligent Audit (async — non-blocking) ----------
@@ -216,7 +231,8 @@ async def audit_submission(req: AuditRequest):
     Async: the DeepSeek API call is non-blocking.
     """
     try:
-        result = grading_service.audit(
+        result = await run_in_threadpool(
+            grading_service.audit,
             problem_id=req.problem_id,
             student_input=req.student_work_image,
             is_exam_mode=req.is_exam_mode
@@ -229,17 +245,24 @@ async def audit_submission(req: AuditRequest):
 
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"Audit exception: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=str(e))
+    except RuntimeError as exc:
+        logger.warning("Audit unavailable: %s", exc)
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except Exception as exc:
+        logger.error(f"Audit exception: {exc}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Audit failed") from exc
 
 
 # ---------- Admin: Config reload ----------
 @app.post("/admin/reload-config")
 def reload_config():
     """Hot-reload configuration from .env (admin use)."""
+    global core, grading_service
     try:
-        core.config.reload()
+        Config.reload()
+        AppCore.reset()
+        core = AppCore.get()
+        grading_service = GradingService()
         return {"success": True, "model": core.config.DEEPSEEK_MODEL}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

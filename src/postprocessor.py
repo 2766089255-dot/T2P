@@ -9,11 +9,8 @@ Main Updates:
 import json
 import re
 import logging
-import torch
-import numpy as np
+import os
 from typing import Dict, List, Optional, Any
-from sentence_transformers import SentenceTransformer
-from sentence_transformers import util
 
 logger = logging.getLogger(__name__)
 
@@ -23,18 +20,33 @@ class PostProcessor:
     def __init__(self, similarity_threshold: float = 0.85):
         self.similarity_threshold = similarity_threshold
         self.similarity_model = None
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self._similarity_initialized = False
+
+    def _get_similarity_model(self):
+        """Load the optional embedding model only when deduplication needs it."""
+        if self._similarity_initialized:
+            return self.similarity_model
+
+        self._similarity_initialized = True
+        if os.getenv("ENABLE_SEMANTIC_DEDUP", "true").lower() not in ("true", "1", "yes"):
+            logger.info("Semantic deduplication disabled; using text fingerprints")
+            return None
 
         try:
-            logger.info(f"Loading semantic deduplication model... (Target device: {self.device})")
+            import torch
+            from sentence_transformers import SentenceTransformer
+
+            device = "cuda" if torch.cuda.is_available() else "cpu"
+            logger.info("Loading semantic deduplication model on %s", device)
             self.similarity_model = SentenceTransformer(
-                'paraphrase-multilingual-MiniLM-L12-v2',
-                device=self.device
+                "paraphrase-multilingual-MiniLM-L12-v2",
+                device=device,
             )
-            logger.info(f"Semantic deduplication engine ready [Device: {self.device.upper()}]")
-        except Exception as e:
-            logger.info(f"Semantic model unavailable, using text fingerprinting dedup (demo-safe)")
+            logger.info("Semantic deduplication engine ready")
+        except Exception as exc:
+            logger.info("Semantic model unavailable; using text fingerprints (%s)", exc)
             self.similarity_model = None
+        return self.similarity_model
 
     def _sanitize_text(self, text: str) -> str:
         """
@@ -195,22 +207,29 @@ class PostProcessor:
 
     def deduplicate(self, problems: List[Dict], existing: List[Dict] = None) -> List[Dict]:
         """Transformer-based semantic deduplication (supports fallback when model is unavailable)"""
-        if not problems or self.similarity_model is None:
+        if not problems:
+            return []
+
+        similarity_model = self._get_similarity_model()
+        if similarity_model is None:
             return self._basic_deduplicate(problems, existing)
+
+        import torch
+        from sentence_transformers import util
 
         new_texts = [p.get('problem_statement', '') for p in problems
                      if isinstance(p, dict) and p.get('problem_statement')]
         if not new_texts:
             return problems
 
-        new_embeddings = self.similarity_model.encode(new_texts, convert_to_tensor=True)
+        new_embeddings = similarity_model.encode(new_texts, convert_to_tensor=True)
 
         pool_embeddings = None
         if existing:
             existing_texts = [p.get('problem_statement', '') for p in existing
                               if isinstance(p, dict) and p.get('problem_statement')]
             if existing_texts:
-                pool_embeddings = self.similarity_model.encode(existing_texts, convert_to_tensor=True)
+                pool_embeddings = similarity_model.encode(existing_texts, convert_to_tensor=True)
 
         unique_problems = []
         for i, emb in enumerate(new_embeddings):

@@ -14,18 +14,60 @@ import base64
 from typing import Optional
 from PIL import Image
 
+from src.config import Config
+
 logger = logging.getLogger(__name__)
 
 
 class OCRService:
     """Optical character recognition for student handwritten submissions."""
 
-    # ocr.space free tier: 25k requests/month, no API key needed
-    OCR_SPACE_URL = "https://api.ocr.space/parse/image"
+    # Keep encoded uploads below the free plan's 1 MB source-file limit.
+    MAX_FREE_IMAGE_BYTES = 950_000
 
-    def __init__(self):
+    def __init__(self, api_key: Optional[str] = None, trust_env: Optional[bool] = None):
         self._reader = None        # easyocr reader (lazy)
         self._easyocr_available = None
+        self.api_key = api_key or Config.OCR_SPACE_API_KEY
+        self.api_url = Config.OCR_SPACE_URL
+        self.engine = Config.OCR_SPACE_ENGINE
+        self.language = Config.OCR_SPACE_LANGUAGE
+        self.timeout = Config.OCR_SPACE_TIMEOUT
+        self.trust_env = Config.OCR_SPACE_TRUST_ENV if trust_env is None else trust_env
+
+    def _prepare_cloud_image(self, image_bytes: bytes) -> tuple[bytes, str]:
+        """Validate an image and reduce large photos for the OCR.Space free tier."""
+        if not image_bytes:
+            raise ValueError("Image payload is empty")
+
+        with Image.open(io.BytesIO(image_bytes)) as image:
+            image.load()
+            source_format = (image.format or "PNG").upper()
+            mime_types = {
+                "PNG": "image/png",
+                "JPEG": "image/jpeg",
+                "JPG": "image/jpeg",
+                "GIF": "image/gif",
+                "BMP": "image/bmp",
+                "TIFF": "image/tiff",
+            }
+
+            if len(image_bytes) <= self.MAX_FREE_IMAGE_BYTES and source_format in mime_types:
+                return image_bytes, mime_types[source_format]
+
+            # Uploaded phone photos can exceed the free API limit. Re-encode at
+            # progressively smaller sizes while keeping enough detail for OCR.
+            working = image.convert("RGB")
+            for max_dimension, quality in ((2200, 88), (1800, 80), (1400, 72), (1100, 65)):
+                resized = working.copy()
+                resized.thumbnail((max_dimension, max_dimension), Image.Resampling.LANCZOS)
+                output = io.BytesIO()
+                resized.save(output, format="JPEG", quality=quality, optimize=True)
+                prepared = output.getvalue()
+                if len(prepared) <= self.MAX_FREE_IMAGE_BYTES:
+                    return prepared, "image/jpeg"
+
+        raise ValueError("Image cannot be reduced below the OCR.Space free-plan limit")
 
     # ── ocr.space backend (primary — zero setup) ──────────────────────
 
@@ -34,36 +76,49 @@ class OCRService:
         try:
             import httpx
 
-            b64 = base64.b64encode(image_bytes).decode("utf-8")
-            resp = httpx.post(
-                self.OCR_SPACE_URL,
-                data={
-                    "apikey": "helloworld",  # ocr.space free tier key
-                    "base64Image": f"data:image/png;base64,{b64}",
-                    "language": "eng",
-                    "isOverlayRequired": "false",
-                    "scale": "true",
-                    "OCREngine": "2",
-                },
-                timeout=httpx.Timeout(15.0),
-            )
+            prepared_bytes, mime_type = self._prepare_cloud_image(image_bytes)
+            b64 = base64.b64encode(prepared_bytes).decode("ascii")
+            with httpx.Client(
+                timeout=httpx.Timeout(self.timeout),
+                trust_env=self.trust_env,
+            ) as client:
+                resp = client.post(
+                    self.api_url,
+                    headers={"apikey": self.api_key},
+                    data={
+                        "base64Image": f"data:{mime_type};base64,{b64}",
+                        "language": self.language,
+                        "isOverlayRequired": "false",
+                        "scale": "true",
+                        "OCREngine": self.engine,
+                    },
+                )
             if resp.status_code != 200:
-                logger.warning(f"ocr.space returned {resp.status_code}")
+                logger.warning("OCR.Space returned HTTP %s", resp.status_code)
                 return None
 
             data = resp.json()
+            if data.get("IsErroredOnProcessing"):
+                logger.warning("OCR.Space processing error: %s", data.get("ErrorMessage") or "unknown error")
+                return None
+
             results = data.get("ParsedResults", [])
             if not results:
                 return None
 
-            text = results[0].get("ParsedText", "").strip()
+            first_result = results[0]
+            if first_result.get("FileParseExitCode") not in (1, "1", None):
+                logger.warning("OCR.Space could not parse the image: %s", first_result.get("ErrorMessage") or "unknown error")
+                return None
+
+            text = (first_result.get("ParsedText") or "").strip()
             if text:
-                logger.info(f"OCR (ocr.space): {text[:80]}...")
+                logger.info("OCR.Space extracted %d characters", len(text))
                 return text
             return None
 
-        except Exception as e:
-            logger.warning(f"ocr.space request failed: {e}")
+        except Exception as exc:
+            logger.warning("OCR.Space request failed: %s", exc)
             return None
 
     # ── easyocr backend (fallback — local, offline) ───────────────────

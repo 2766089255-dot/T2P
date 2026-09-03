@@ -26,6 +26,7 @@ class GoldenDataLoader:
         self.data_path = Path(data_path)
         self.dataset = None
         self.problems = []
+        self.problems_by_id = {}
         self.topics_map = {}  # Structure: { "Topic Name": [problem_dict, ...] }
         self.load()
 
@@ -47,6 +48,9 @@ class GoldenDataLoader:
             else:
                 self.problems = []
 
+            self._normalize_answer_fields()
+            self._build_problem_index()
+
             # Rebuild topic index
             self._build_topic_map()
 
@@ -56,6 +60,52 @@ class GoldenDataLoader:
         except Exception as e:
             logger.error(f"Failed to load dataset: {str(e)}")
             raise
+
+    def _normalize_answer_fields(self):
+        """Add current answer fields while preserving legacy dataset fields."""
+        for problem in self.problems:
+            if not isinstance(problem, dict):
+                continue
+
+            question_type = str(
+                problem.get('question_type') or problem.get('type') or ''
+            ).strip().lower()
+            legacy_answer = problem.get('correct_answer')
+
+            if question_type == 'mcq' and 'answer' not in problem and legacy_answer is not None:
+                problem['answer'] = legacy_answer
+            elif (
+                question_type == 'fill_in'
+                and 'correct_values' not in problem
+                and legacy_answer is not None
+            ):
+                problem['correct_values'] = (
+                    legacy_answer if isinstance(legacy_answer, list) else [legacy_answer]
+                )
+
+    def _build_problem_index(self):
+        """Build an unambiguous lookup index and reject duplicate identifiers."""
+        self.problems_by_id = {}
+        positions = {}
+
+        for position, problem in enumerate(self.problems, start=1):
+            if not isinstance(problem, dict):
+                continue
+
+            identifiers = {
+                str(value).strip()
+                for value in (problem.get('problem_id'), problem.get('id'))
+                if value is not None and str(value).strip()
+            }
+            for identifier in identifiers:
+                if identifier in self.problems_by_id:
+                    first_position = positions[identifier]
+                    raise ValueError(
+                        f"Duplicate problem identifier '{identifier}' "
+                        f"at records {first_position} and {position}"
+                    )
+                self.problems_by_id[identifier] = problem
+                positions[identifier] = position
 
     def _build_topic_map(self):
         """Build index by both main category and subcategory, and clean whitespace"""
@@ -84,10 +134,10 @@ class GoldenDataLoader:
             problem_id: Unique problem ID
             output_dir: Output directory for generated results (used to find non-seed problems)
         """
-        # 1. First search in the in-memory golden problem bank
-        for p in self.problems:
-            if p.get('problem_id') == problem_id or p.get('id') == problem_id:
-                return p
+        # 1. First search in the validated in-memory golden problem index
+        indexed_problem = self.problems_by_id.get(str(problem_id).strip())
+        if indexed_problem is not None:
+            return indexed_problem
 
         # 2. If not found, try searching in the output directory for generated batch files or individual problem files
         if output_dir and output_dir.exists():

@@ -21,7 +21,6 @@ class Config:
     # Path(__file__).resolve() -> D:\PycharmBase\T2P\src\config.py
     # .parent.parent -> D:\PycharmBase\T2P
     BASE_DIR = Path(__file__).resolve().parent.parent
-    print(f"Project root: {BASE_DIR}")
 
     # --- Resource paths ---
     # Default points to D:\PycharmBase\T2P\data\golden_dataset_v2.json
@@ -41,6 +40,14 @@ class Config:
     DEEPSEEK_MODEL = os.getenv("DEEPSEEK_MODEL", "deepseek-chat")
     DEEPSEEK_BASE_URL = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
 
+    # --- OCR.Space (the public key is for local demos only) ---
+    OCR_SPACE_API_KEY = os.getenv("OCR_SPACE_API_KEY", "helloworld")
+    OCR_SPACE_URL = os.getenv("OCR_SPACE_URL", "https://api.ocr.space/parse/image")
+    OCR_SPACE_ENGINE = os.getenv("OCR_SPACE_ENGINE", "2")
+    OCR_SPACE_LANGUAGE = os.getenv("OCR_SPACE_LANGUAGE", "eng")
+    OCR_SPACE_TIMEOUT = float(os.getenv("OCR_SPACE_TIMEOUT", 20))
+    OCR_SPACE_TRUST_ENV = os.getenv("OCR_SPACE_TRUST_ENV", "false").lower() in ("true", "1", "yes")
+
     # --- Model generation control parameters ---
     DEFAULT_TEMPERATURE = float(os.getenv("DEFAULT_TEMPERATURE", 0.5))
     DEFAULT_MAX_TOKENS = int(os.getenv("DEFAULT_MAX_TOKENS", 16384))
@@ -52,6 +59,17 @@ class Config:
 
     # [Recommendation]: Considering 429 risk, retry count can be maintained at 3 or increased to 5
     MAX_RETRIES = int(os.getenv("MAX_RETRIES", 3))
+
+    ENABLE_AI_REVIEW = os.getenv("ENABLE_AI_REVIEW", "true").lower() in ("true", "1", "yes")
+
+    CORS_ORIGINS = [
+        origin.strip()
+        for origin in os.getenv(
+            "CORS_ORIGINS",
+            "http://localhost:3000,http://localhost:3001,http://127.0.0.1:3000,http://127.0.0.1:3001",
+        ).split(",")
+        if origin.strip()
+    ]
 
     # --- Log level ---
     LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
@@ -69,10 +87,24 @@ class Config:
         cls.DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
         cls.DEEPSEEK_MODEL = os.getenv("DEEPSEEK_MODEL", "deepseek-chat")
         cls.DEEPSEEK_BASE_URL = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
+        cls.OCR_SPACE_API_KEY = os.getenv("OCR_SPACE_API_KEY", "helloworld")
+        cls.OCR_SPACE_URL = os.getenv("OCR_SPACE_URL", "https://api.ocr.space/parse/image")
+        cls.OCR_SPACE_ENGINE = os.getenv("OCR_SPACE_ENGINE", "2")
+        cls.OCR_SPACE_LANGUAGE = os.getenv("OCR_SPACE_LANGUAGE", "eng")
+        cls.OCR_SPACE_TIMEOUT = float(os.getenv("OCR_SPACE_TIMEOUT", 20))
+        cls.OCR_SPACE_TRUST_ENV = os.getenv("OCR_SPACE_TRUST_ENV", "false").lower() in ("true", "1", "yes")
         cls.GOLDEN_DATASET_PATH = os.getenv("GOLDEN_DATASET_PATH", str(cls.BASE_DIR / "data" / "golden_dataset_v3.json"))
         cls.OUTPUT_DIR = os.getenv("OUTPUT_DIR", str(cls.BASE_DIR / "output"))
         cls.LOG_FILE = os.getenv("LOG_FILE", str(cls.BASE_DIR / "logs" / "t2p_system.log"))
         cls.ENABLE_AI_REVIEW = os.getenv("ENABLE_AI_REVIEW", "true").lower() in ("true", "1", "yes")
+        cls.CORS_ORIGINS = [
+            origin.strip()
+            for origin in os.getenv(
+                "CORS_ORIGINS",
+                "http://localhost:3000,http://localhost:3001,http://127.0.0.1:3000,http://127.0.0.1:3001",
+            ).split(",")
+            if origin.strip()
+        ]
         logger.info("Config reloaded from environment")
 
 
