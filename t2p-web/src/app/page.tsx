@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useSyncExternalStore } from 'react';
 import axios from 'axios';
+import Image from 'next/image';
 import ReactMarkdown from 'react-markdown';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
@@ -41,11 +42,20 @@ interface AuditResult {
   ocr_text?: string;
 }
 
+interface GeneratePayload {
+  topics: string[];
+  num: number;
+  mode: string;
+  difficulty: number;
+  question_type: string;
+  user_id?: string;
+}
+
 const STORAGE_PROBLEMS = 't2p_problems';
 const STORAGE_AUDITS = 't2p_audits';
 
 // Tool function: Check if an object can be securely JSON serialized
-const isSerializable = (obj: any): boolean => {
+const isSerializable = (obj: unknown): boolean => {
   try {
     JSON.stringify(obj);
     return true;
@@ -53,6 +63,38 @@ const isSerializable = (obj: any): boolean => {
     return false;
   }
 };
+
+const subscribeToClient = () => () => {};
+const getClientSnapshot = () => true;
+const getServerSnapshot = () => false;
+
+const loadStoredProblems = (): Problem[] => {
+  if (typeof window === 'undefined') return [];
+  try {
+    const saved = localStorage.getItem(STORAGE_PROBLEMS);
+    if (!saved) return [];
+    const parsed: unknown = JSON.parse(saved);
+    return Array.isArray(parsed) ? (parsed.filter(isSerializable) as Problem[]) : [];
+  } catch {
+    return [];
+  }
+};
+
+const loadStoredAudits = (): Record<string, AuditResult> => {
+  if (typeof window === 'undefined') return {};
+  try {
+    const saved = localStorage.getItem(STORAGE_AUDITS);
+    if (!saved) return {};
+    const parsed: unknown = JSON.parse(saved);
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return {};
+    return Object.fromEntries(
+      Object.entries(parsed).filter(([, value]) => isSerializable(value))
+    ) as Record<string, AuditResult>;
+  } catch {
+    return {};
+  }
+};
+
 const renderMathContent = (text: string) => {
   if (!text) return null;
   
@@ -82,14 +124,14 @@ const renderMathContent = (text: string) => {
 };
 export default function T2PHome() {
   const { userId, setUserId, login } = useUser();
-  const [mounted, setMounted] = useState(false);
+  const mounted = useSyncExternalStore(subscribeToClient, getClientSnapshot, getServerSnapshot);
   const [loading, setLoading] = useState(false);
-  const [problems, setProblems] = useState<Problem[]>([]);
+  const [problems, setProblems] = useState<Problem[]>(loadStoredProblems);
   const [error, setError] = useState<string | null>(null);
 
   const [activeSolvingId, setActiveSolvingId] = useState<string | null>(null);
   const [isSubmittingDrawing, setIsSubmittingDrawing] = useState(false);
-  const [auditResult, setAuditResult] = useState<Record<string, AuditResult>>({});
+  const [auditResult, setAuditResult] = useState<Record<string, AuditResult>>(loadStoredAudits);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [typedAnswer, setTypedAnswer] = useState("");
 
@@ -105,58 +147,33 @@ export default function T2PHome() {
   const [topicOptions, setTopicOptions] = useState<string[]>([]);
   const [questionType, setQuestionType] = useState("calculation");
 
-  const [initialized, setInitialized] = useState(false);
-
-  // Initialization: Restore from local storage and clean up abnormal data
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const savedProblems = localStorage.getItem(STORAGE_PROBLEMS);
-        if (savedProblems) {
-          const parsed = JSON.parse(savedProblems);
-          if (Array.isArray(parsed)) {
-            // Filter out questions that cannot be serialized (in extreme cases)
-            const clean = parsed.filter(p => isSerializable(p));
-            if (clean.length < parsed.length) {
-              console.warn('Damaged question data detected, automatically removed');
-            }
-            setProblems(clean);
-          }
-        }
-        const savedAudits = localStorage.getItem(STORAGE_AUDITS);
-        if (savedAudits) {
-          const parsed = JSON.parse(savedAudits);
-          if (typeof parsed === 'object' && parsed !== null) {
-            // Similarly filtering audit records that cannot be serialized
-            const cleanAudits: Record<string, AuditResult> = {};
-            Object.entries(parsed).forEach(([id, val]) => {
-              if (isSerializable(val)) cleanAudits[id] = val as AuditResult;
-            });
-            setAuditResult(cleanAudits);
-          }
-        }
-      } catch (e) {
-        console.warn('Failed to restore data from localStorage', e);
+  const fetchTopics = useCallback(async () => {
+    try {
+      const res = await axios.get(`${API_BASE}/topics`);
+      if (res.data.success) {
+        const topics: string[] = res.data.topics;
+        setTopicOptions(topics);
+        setSelectedTopic(current => current || topics[0] || '');
       }
+    } catch {
+      setError("Unable to connect to the backend. Please start api_server.py.");
     }
-    setInitialized(true);
-    setMounted(true);
-    fetchTopics();
   }, []);
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(() => void fetchTopics(), 0);
+    return () => window.clearTimeout(timeoutId);
+  }, [fetchTopics]);
 
   // Persist problems to local storage (with exception protection)
   useEffect(() => {
-    if (!initialized || typeof window === 'undefined') return;
+    if (!mounted || typeof window === 'undefined') return;
     try {
       localStorage.setItem(STORAGE_PROBLEMS, JSON.stringify(problems));
     } catch (e) {
       console.error('Failed to save title, attempt to remove non serializable data ...', e);
       // Filter out questions that cause serialization failure
       const safeProblems = problems.filter(p => isSerializable(p));
-      if (safeProblems.length < problems.length) {
-        setError('Some questions have abnormal data and have been automatically removed. Please regenerate.');
-        setProblems(safeProblems);
-      }
       // Even if all failures occur, do not empty the original storage
       try {
         localStorage.setItem(STORAGE_PROBLEMS, JSON.stringify(safeProblems));
@@ -164,11 +181,11 @@ export default function T2PHome() {
         console.error('Secondary save failed, please manually clear cache or generate new questions', e2);
       }
     }
-  }, [problems, initialized]);
+  }, [problems, mounted]);
 
   // Persist audits to local storage (with exception protection)
   useEffect(() => {
-    if (!initialized || typeof window === 'undefined') return;
+    if (!mounted || typeof window === 'undefined') return;
     try {
       localStorage.setItem(STORAGE_AUDITS, JSON.stringify(auditResult));
     } catch (e) {
@@ -177,28 +194,13 @@ export default function T2PHome() {
       Object.entries(auditResult).forEach(([id, val]) => {
         if (isSerializable(val)) safeAudits[id] = val;
       });
-      setAuditResult(safeAudits);
       try {
         localStorage.setItem(STORAGE_AUDITS, JSON.stringify(safeAudits));
       } catch (e2) {
         console.error('Failed to save audit results twice', e2);
       }
     }
-  }, [auditResult, initialized]);
-
-  const fetchTopics = useCallback(async () => {
-    try {
-      const res = await axios.get(`${API_BASE}/topics`);
-      if (res.data.success) {
-        setTopicOptions(res.data.topics);
-        if (!selectedTopic && res.data.topics.length > 0) {
-          setSelectedTopic(res.data.topics[0]);
-        }
-      }
-    } catch (err) {
-      setError("Unable to connect to the backend, please check api_server.py Whether to start");
-    }
-  }, [selectedTopic]);
+  }, [auditResult, mounted]);
 
   const handleLogin = async () => {
     const success = await login();
@@ -238,7 +240,7 @@ export default function T2PHome() {
     setError(null);
     setSelectedImage(null);
     try {
-      const payload: any = {
+      const payload: GeneratePayload = {
         topics: [selectedTopic],
         num: 1,
         mode: selectedMode,
@@ -248,9 +250,9 @@ export default function T2PHome() {
       if (userId) payload.user_id = userId;
       const response = await axios.post(`${API_BASE}/generate`, payload);
       if (response.data.success) {
-        const rawProblems = response.data.data;
+        const rawProblems: Problem[] = Array.isArray(response.data.data) ? response.data.data : [];
         // Pre check: Only accepts serializable questions
-        const safeProblems = rawProblems.filter((p: any) => {
+        const safeProblems = rawProblems.filter((p) => {
           if (!isSerializable(p)) {
             console.warn('Discard questions that cannot be serialized:', p);
             return false;
@@ -267,7 +269,7 @@ export default function T2PHome() {
           setError('Generation failed, returned data exception');
         }
       }
-    } catch (err) {
+    } catch {
       setError("Generation failed, please check network connection or API quota");
     } finally {
       setLoading(false);
@@ -289,8 +291,8 @@ export default function T2PHome() {
         user_id: userId
       });
       if (response.data.success) {
-        const rawProblems = response.data.data;
-        const safeProblems = rawProblems.filter((p: any) => isSerializable(p));
+        const rawProblems: Problem[] = Array.isArray(response.data.data) ? response.data.data : [];
+        const safeProblems = rawProblems.filter((p) => isSerializable(p));
         if (safeProblems.length < rawProblems.length) {
           setError('Some questions are abnormal and have been automatically filtered');
         }
@@ -301,7 +303,7 @@ export default function T2PHome() {
           setError('AI recommendation question data is abnormal, please try again later');
         }
       }
-    } catch (err) {
+    } catch {
       setError("Generation failed, please check network connection or API quota");
     } finally {
       setLoading(false);
@@ -727,9 +729,12 @@ export default function T2PHome() {
                       {selectedImage ? (
                         <div className="absolute inset-0 bg-slate-50/50 flex items-center justify-center p-8">
                           <div className="relative max-h-full">
-                            <img
+                            <Image
                               src={selectedImage}
                               alt="Uploaded work"
+                              width={800}
+                              height={600}
+                              unoptimized
                               className="max-h-[300px] w-auto object-contain rounded-2xl shadow-2xl border-4 border-white"
                             />
                             <button
@@ -843,7 +848,7 @@ export default function T2PHome() {
 
                         {result.tutor_feedback && (
                           <div className="bg-white/70 rounded-xl p-4 border border-slate-200">
-                            <p className="text-xs font-bold text-slate-500 uppercase mb-2">Supervisor's advice</p>
+                            <p className="text-xs font-bold text-slate-500 uppercase mb-2">Supervisor&apos;s advice</p>
                             <div className="text-sm text-slate-700">{renderMathContent(result.tutor_feedback)}</div>
                           </div>
                         )}

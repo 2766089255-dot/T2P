@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import Link from 'next/link';
 import {
@@ -14,19 +14,21 @@ import { API_BASE } from '@/lib/config';
 const truncateTopic = (name: string, maxLen = 11) =>
   name.length > maxLen ? name.slice(0, maxLen) + '…' : name;
 
+interface TopicProgress {
+  mastery_score: number;
+  current_level: number;
+  completed_count: number;
+}
+
+type TopicsStatus = Record<string, TopicProgress>;
+
 export default function Dashboard() {
   const { userId } = useUser();
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<TopicsStatus | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    if (userId) {
-      fetchProgress();
-    }
-  }, [userId]);
-
-  const fetchProgress = async () => {
+  const fetchProgress = useCallback(async () => {
     if (!userId) return;
     setLoading(true);
     setError('');
@@ -37,12 +39,18 @@ export default function Dashboard() {
       } else {
         setError('Failed to retrieve data, please check username。');
       }
-    } catch (e) {
+    } catch {
       setError('Failed to retrieve data, please confirm that the backend has been started。');
     } finally {
       setLoading(false);
     }
-  };
+  }, [userId]);
+
+  useEffect(() => {
+    if (!userId) return;
+    const timeoutId = window.setTimeout(() => void fetchProgress(), 0);
+    return () => window.clearTimeout(timeoutId);
+  }, [userId, fetchProgress]);
 
   // 用户未登录状态
   if (!userId) {
@@ -69,14 +77,14 @@ export default function Dashboard() {
   }
 
   const radarData = data
-    ? Object.entries(data).map(([topic, info]: any) => ({
+    ? Object.entries(data).map(([topic, info]) => ({
         topic: truncateTopic(topic),
         mastery: Math.round(info.mastery_score * 100),
       }))
     : [];
 
   const barData = data
-    ? Object.entries(data).map(([topic, info]: any) => ({
+    ? Object.entries(data).map(([topic, info]) => ({
         topic: truncateTopic(topic),
         level: info.current_level,
         count: info.completed_count,

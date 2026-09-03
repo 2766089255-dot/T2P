@@ -1,7 +1,7 @@
 // src/context/UserContext.tsx
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode } from 'react';
 import axios from 'axios';
 import { API_BASE } from '@/lib/config';
 
@@ -22,14 +22,9 @@ const UserContext = createContext<UserContextType>({
 export const useUser = () => useContext(UserContext);
 
 export const UserProvider = ({ children }: { children: ReactNode }) => {
-  const [userId, setUserId] = useState('');
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('t2p_user_id') || '';
-      if (stored) setUserId(stored);
-    }
-  }, []);
+  const [userId, setUserId] = useState(() =>
+    typeof window === 'undefined' ? '' : localStorage.getItem('t2p_user_id') || ''
+  );
 
   const login = async (): Promise<boolean> => {
     if (!userId.trim()) return false;
