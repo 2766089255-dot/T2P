@@ -43,3 +43,4 @@ src/src副本/
 # Generated / runtime data
 data/generated/
 data/users/
+reports/
