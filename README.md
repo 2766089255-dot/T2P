@@ -1,5 +1,7 @@
 # T2P AI Mentor
 
+[![CI](https://github.com/2766089255-dot/T2P/actions/workflows/ci.yml/badge.svg)](https://github.com/2766089255-dot/T2P/actions/workflows/ci.yml)
+
 T2P is an end-to-end calculus learning assistant that generates targeted exercises, checks response quality, grades typed or handwritten work, and adapts the next activity to each learner's progress.
 
 The repository contains a FastAPI backend, a Next.js interface, a 252-question curated seed dataset spanning 13 calculus topics, and a modular generation/evaluation pipeline.
@@ -102,10 +104,17 @@ python main.py --mode drill --topics "Derivatives and Differentiation" --num 3 -
 
 ## Verification
 
+GitHub Actions runs the offline backend suite on Python 3.12 and 3.13, generates
+a dataset-audit report, and checks frontend lint, route-aware TypeScript, and
+production builds on Node.js 24 for pull requests and pushes to `main`.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the lightweight test setup, review
+workflow, and coverage limits, and [CHANGELOG.md](CHANGELOG.md) for release notes.
+
 ```bash
 python -m unittest discover -s tests -v
 cd t2p-web
 npm run lint
+npm run typecheck
 npm run build
 ```
 
