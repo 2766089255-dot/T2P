@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ['3.12', '3.13']
+    env:
+      PYTHONUTF8: '1'
+      MPLBACKEND: Agg
+      DEEPSEEK_API_KEY: ''
+      OCR_SPACE_API_KEY: ''
+      ENABLE_SEMANTIC_DEDUP: 'false'
+      HF_HUB_OFFLINE: '1'
+      TRANSFORMERS_OFFLINE: '1'
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: requirements-ci.txt
+      - name: Install test dependencies
+        run: python -m pip install -r requirements-ci.txt
+      - name: Check dependency compatibility
+        run: python -m pip check
+      - name: Run offline backend tests
+        run: python -m unittest discover -s tests -v
+      - name: Generate offline dataset audit
+        run: python audit_dataset.py --dataset data/golden_dataset_v3.json --output-dir reports
+
+  frontend:
+    name: Frontend (Node 24)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: t2p-web
+    env:
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: t2p-web/package-lock.json
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Lint frontend
+        run: npm run lint
+      - name: Check TypeScript and route types
+        run: npm run typecheck
+      - name: Build frontend
+        run: npm run build

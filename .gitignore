@@ -3,6 +3,7 @@
 .env.local
 
 # Python
+.venv/
 __pycache__/
 *.pyc
 *.pyo
@@ -20,6 +21,7 @@ venv_new/
 node_modules/
 dist/
 .next/
+*.tsbuildinfo
 
 # Claude vibe coding
 CLAUDE.md

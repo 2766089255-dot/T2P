@@ -1,0 +1,11 @@
+# Test-only runtime subset. Full application dependencies remain in requirements.txt.
+# The offline suite does not exercise Torch embeddings or a live LLM/OCR provider.
+openai>=1.0.0
+fastapi>=0.115.0
+uvicorn>=0.30.0
+pydantic>=2.8.0
+numpy>=1.24.0
+matplotlib>=3.7.0
+python-dotenv>=1.0.1
+httpx>=0.27.0
+Pillow>=10.0.0
